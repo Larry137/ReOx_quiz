@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReOx Quiz</title>
+
+<style>
+body{font-family:Arial;margin:0;background:#f5f5f5}
+.container{max-width:900px;margin:auto;padding:16px}
+.card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+select,input,button{padding:8px;font-size:14px}
+input{flex:1}
+button{cursor:pointer}
+.correct{background:#c8f7c5}
+.wrong{background:#f7c5c5}
+.badge{background:#eee;padding:6px 10px;border-radius:8px;display:inline-block;margin:2px}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>ReOx Quiz (Ver改太多不記得了)</h2>
+<h3>參考資料：全華選修化學IV</h3>
+
+<div>
+<span class="badge">作答：<span id="total">0</span></span>
+<span class="badge">答對：<span id="correct">0</span></span>
+<span class="badge">錯題：<span id="wrongCount">0</span></span>
+<span class="badge">正確率：<span id="rate">0%</span></span>
+<span class="badge">連續：<span id="streak">0</span></span>
+</div>
+
+<hr>
+
+<div class="card">
+
+<h3 id="question"></h3>
+
+<div class="row">
+<select id="c1">
+<option value="">顏色</option>
+<option>紫色</option><option>粉紅色</option>
+<option>綠色</option><option>黃色</option>
+<option>橙色</option><option>褐色</option>
+<option>紅棕色</option><option>無色</option>
+</select>
+
+<input id="p2" placeholder="產物">
+<input id="e3" placeholder="電子數（整數）" oninput="cleanNumber(this)">
+
+<select id="c4">
+<option value="">產物顏色</option>
+<option>紫色</option><option>粉紅色</option>
+<option>綠色</option><option>黃色</option>
+<option>橙色</option><option>褐色</option>
+<option>紅棕色</option><option>無色</option>
+</select>
+</div>
+
+<div class="row">
+<button onclick="ins('¹')">¹</button><button onclick="ins('²')">²</button><button onclick="ins('³')">³</button>
+<button onclick="ins('⁴')">⁴</button><button onclick="ins('⁵')">⁵</button>
+<button onclick="ins('⁺')">⁺</button><button onclick="ins('⁻')">⁻</button>
+<button onclick="ins('₀')">₀</button><button onclick="ins('₁')">₁</button><button onclick="ins('₂')">₂</button> <button onclick="ins('₃')">₃</button>
+<button onclick="ins('₄')">₄</button><button onclick="ins('₅')">₅</button><button onclick="ins('₆')">₆</button><button onclick="ins('₇')">₇</button>
+</div>
+
+<br>
+
+<button onclick="check()">送出</button>
+<button id="nextBtn" onclick="newQ()" disabled>下一題</button>
+
+<div id="analysis"></div>
+<hr>
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<h3 style="margin:8px 0;">錯題清單</h3>
+<button id="wrongModeBtn" onclick="toggleWrongMode()">只練錯題：關</button>
+</div>
+<div id="wrongList">目前沒有錯題</div>
+
+</div>
+</div>
+
+<script>
+
+// ======================
+// 題庫（參考資料：全華選修化學IV）
+// ======================
+const questions = [
+{q:"MnO₄⁻（酸性）",product:"Mn²⁺",e:5,color:"紫色",pcolor:"粉紅色"},
+{q:"MnO₄⁻（中性或微鹼性）",product:"MnO₂",e:3,color:"紫色",pcolor:"褐色"},
+{q:"MnO₄⁻（強鹼性）",product:"MnO₄²⁻",e:1,color:"紫色",pcolor:"綠色"},
+{q:"Cr₂O₇²⁻",product:"Cr³⁺",e:3,color:"橙色",pcolor:"綠色"},
+{q:"Fe²⁺",product:"Fe³⁺",e:1,color:"綠色",pcolor:"黃色"},
+{q:"SO₃²⁻",product:"SO₄²⁻",e:2,color:"",pcolor:""},
+{q:"C₂O₄²⁻",product:"CO₂",e:2,color:"",pcolor:""},
+
+{q:"H₂O₂（還原）",product:"H₂O",e:2,color:"",pcolor:""},
+{q:"H₂O₂ + 強氧化劑（如KMnO₄）",product:"O₂",e:2,color:"",pcolor:""},
+
+{q:"HNO₃（濃 + Cu/Hg/Ag）",product:"NO₂",e:1,color:"",pcolor:"紅棕色"},
+{q:"HNO₃（稀 + Cu/Hg/Ag）",product:"NO",e:3,color:"",pcolor:""},
+{q:"H₂SO₄（濃 + Cu/Hg/Ag）",product:"SO₂",e:2,color:"",pcolor:""},
+{q:"Sn²⁺",product:"Sn⁴⁺",e:2,color:"",pcolor:""},
+
+{q:"Ce⁴⁺",product:"Ce³⁺",e:1,color:"黃色",pcolor:""},
+
+{q:"NO₂⁻",product:"NO₃⁻",e:2,color:"",pcolor:""},
+{q:"S₂O₃²⁻ + 弱氧化劑（如I₂）",product:"S₄O₆²⁻",e:1,color:"",pcolor:""},
+{q:"S₂O₃²⁻ + 強氧化劑（如Cl₂）",product:"SO₄²⁻",e:8,color:"",pcolor:""},
+
+{q:"H₂S",product:"S",e:2,color:"",pcolor:""},
+
+{q:"鹵素陰離子X⁻（F⁻除外）",product:"X₂",e:1,color:"",pcolor:""},
+{q:"鹵素分子X₂",product:"X⁻",e:2,color:"",pcolor:""}
+];
+
+let current;
+let answered=false;
+
+let stats={correct:0,total:0,streak:0};
+let wrong=[];
+let wrongMode=false;
+
+// ======================
+function newQ(){
+try{
+answered=false;
+if(wrongMode && wrong.length){
+ const pool=questions.filter(q=>wrong.some(w=>w.q===q.q));
+ current=pool[Math.floor(Math.random()*pool.length)];
+}else{
+ current=questions[Math.floor(Math.random()*questions.length)];
+}
+
+document.getElementById("question").innerText=current.q;
+
+["c1","p2","e3","c4"].forEach(id=>{
+let el=document.getElementById(id);
+el.value="";
+el.classList.remove("correct","wrong");
+});
+
+document.getElementById("analysis").innerHTML="";
+document.getElementById("nextBtn").disabled=true;
+
+}catch(err){
+console.error("newQ error:",err);
+}
+}
+
+// ======================
+function check(){
+if(answered)return;
+answered=true;
+
+stats.total++;
+
+let ok=true;
+
+function checkField(id,val,label){
+let el=document.getElementById(id);
+
+// 空值 → 不檢查
+if(val===""||val===null||val===undefined) return;
+
+// 電子數
+if(id==="e3"){
+if(Number(el.value)===Number(val)){
+el.classList.add("correct");
+}else{
+el.classList.add("wrong");
+ok=false;
+showCorrect(label,val);
+}
+return;
+}
+
+// 其他欄位
+if(el.value===val){
+el.classList.add("correct");
+}else{
+el.classList.add("wrong");
+ok=false;
+showCorrect(label,val);
+}
+}
+
+// 四欄
+checkField("c1",current.color,"反應物顏色");
+checkField("p2",current.product,"產物");
+checkField("e3",current.e,"電子數");
+checkField("c4",current.pcolor,"產物顏色");
+
+if(ok){
+stats.correct++;
+stats.streak++;
+let item=wrong.find(w=>w.q===current.q);
+if(item){
+ item.count--;
+ if(item.count<=0) wrong=wrong.filter(w=>w.q!==current.q);
+ updateWrongList();
+}
+}else{
+stats.streak=0;
+let item=wrong.find(w=>w.q===current.q);
+if(item){item.count++;}else{wrong.push({...current,count:1});}
+updateWrongList();
+}
+
+document.getElementById("analysis").innerHTML +=
+"<br><b>正確答案：</b>"+current.product+"｜"+current.e+" e⁻";
+
+update();
+document.getElementById("nextBtn").disabled=false;
+}
+
+// ======================
+function showCorrect(label,val){
+document.getElementById("analysis").innerHTML +=
+`<br>${label} 正確：${val}`;
+}
+
+
+function updateWrongList(){
+ const div=document.getElementById("wrongList");
+ if(wrong.length===0){div.innerHTML="目前沒有錯題";return;}
+ wrong.sort((a,b)=>b.count-a.count);
+ div.innerHTML="<ol>"+wrong.map(x=>`<li>${x.q} × ${x.count}</li>`).join("")+"</ol>";
+}
+function toggleWrongMode(){
+ wrongMode=!wrongMode;
+ document.getElementById("wrongModeBtn").textContent="只練錯題："+(wrongMode?"開":"關");
+ newQ();
+}
+
+// ======================
+function update(){
+document.getElementById("correct").innerText=stats.correct;
+document.getElementById("total").innerText=stats.total;
+document.getElementById("streak").innerText=stats.streak;
+document.getElementById("wrongCount").innerText=wrong.length;
+
+let rate=stats.total?Math.round(stats.correct/stats.total*100):0;
+document.getElementById("rate").innerText=rate+"%";
+}
+
+// ======================
+function ins(t){
+let el=document.activeElement;
+if(!el||el.tagName!=="INPUT")el=document.getElementById("p2");
+
+let s=el.selectionStart||0;
+let e=el.selectionEnd||0;
+
+el.value=el.value.slice(0,s)+t+el.value.slice(e);
+el.selectionStart=el.selectionEnd=s+t.length;
+el.focus();
+}
+
+// ======================
+document.addEventListener("keydown",e=>{
+if(e.key==="Enter")check();
+if(e.key===" "&&answered){e.preventDefault();newQ();}
+});
+
+// 启动
+newQ();
+update();
+updateWrongList();
+
+</script>
+
+</body>
+</html>
